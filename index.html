@@ -76,7 +76,6 @@ svg{filter:drop-shadow(0 0 7px rgba(197,139,255,.3))}
 input,select{font-size:16px}
 .gw{position:relative;max-width:300px;margin:8px auto 0}.gw svg{width:100%;display:block}
 .gv{position:absolute;left:0;right:0;bottom:0;text-align:center}.gv b{display:block;font-size:46px;font-weight:900;letter-spacing:-2px;line-height:1}.gv span{color:var(--mut);font-size:13px}
-nav button{padding:8px 2px;font-size:12px}
 </style></head><body>
 <main id="app"></main>
 <button class="fab" id="add">+ New task</button>
@@ -95,8 +94,8 @@ var CATS=[{n:'Basic',c:'var(--c0)'},{n:'Medium',c:'var(--c1)'},{n:'Elite',c:'var
 var REP={none:'Once',daily:'Daily',alt:'Alternate days',weekly:'Weekly',monthly:'Monthly'};
 var S={tasks:[],done:{},lists:null},delP=null,delL=false,LID=1,nl=false,view='today',filt=-1,sel=ymd(new Date()),cm=new Date();cm.setDate(1);
 try{var raw=localStorage.getItem('planner1');if(raw)S=JSON.parse(raw)}catch(e){}
-if(!S.lists)S.lists=[{id:1,name:'Grocery',items:[]},{id:2,name:'Errands',items:[]}];if(!S.done)S.done={};if(!S.set)S.set={notif:false,daily:'08:00',url:''};if(!S.chat)S.chat=[];if(!S.focus)S.focus={};
-function save(){try{localStorage.setItem('planner1',JSON.stringify(S))}catch(e){}}
+if(!S.lists)S.lists=[{id:1,name:'Grocery',items:[]},{id:2,name:'Errands',items:[]}];if(!S.done)S.done={};
+function save(){try{localStorage.setItem('planner1',JSON.stringify(S))}catch(e){}try{pushSync()}catch(e){}}
 function ymd(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function pd(s){var a=s.split('-');return new Date(+a[0],a[1]-1,+a[2])}
 function dn(s){var a=s.split('-');return Math.round(Date.UTC(+a[0],a[1]-1,+a[2])/864e5)}
@@ -110,11 +109,11 @@ function del(id){if(delP!=id){delP=id;render();return}delP=null;S.tasks=S.tasks.
  Object.keys(S.done).forEach(function(k){if(k.split('|')[0]==id)delete S.done[k]});save();render()}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
 function trow(t,d){var dn_=isDone(t,d),c=CATS[t.cat].c;
- return '<div class="task'+(dn_?' done':'')+'"><button class="chk" style="'+(dn_?'background:'+c+';border-color:'+c:'border-color:'+c)+'" onclick="tog('+t.id+',\''+d+'\')">'+(dn_?'✓':'')+'</button><div class="t"><b>'+esc(t.title)+'</b><span class="mut">'+CATS[t.cat].n+(t.time?' · '+t.time:'')+(t.rep!='none'?' · '+REP[t.rep]:'')+(streak(t)?' · 🔥 '+streak(t):'')+'</span></div><button class="x" title="Delete" onclick="del('+t.id+')">'+(delP==t.id?'Sure?':'✕')+'</button></div>'}
+ return '<div class="task'+(dn_?' done':'')+'"><button class="chk" style="'+(dn_?'background:'+c+';border-color:'+c:'border-color:'+c)+'" onclick="tog('+t.id+',\''+d+'\')">'+(dn_?'✓':'')+'</button><div class="t"><b>'+esc(t.title)+'</b><span class="mut">'+CATS[t.cat].n+(t.time?' · '+t.time:'')+(t.rep!='none'?' · '+REP[t.rep]:'')+'</span></div></div>'}
 function today(){var d=ymd(new Date()),L=on(d),n=L.filter(function(t){return isDone(t,d)}).length,p=L.length?Math.round(n/L.length*100):0;
- var h='<h1>'+new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})+'</h1><div class="mut">Do your Elite tasks first, while your energy is highest.</div>'+lvlLine()+quote();
+ var h='<h1>'+new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})+'</h1><div class="mut">Do your Elite tasks first, while your energy is highest.</div>'+quote()+pushCard();
  h+='<div class="card" style="margin-top:14px"><div class="row"><b>Today\'s progress</b><span>'+n+'/'+L.length+' · '+p+'%</span></div><div class="gw"><svg viewBox="0 0 200 110"><path d="M20 100A80 80 0 0 1 180 100" fill="none" stroke="#3a2a55" stroke-width="13" stroke-linecap="round"/><path d="M20 100A80 80 0 0 1 180 100" fill="none" style="stroke:var(--c2)" stroke-width="13" stroke-linecap="round" stroke-dasharray="'+(p*2.513)+' 400"/></svg><div class="gv"><b>'+p+'%</b><span>'+n+' of '+L.length+' done</span></div></div></div>';
- h+=overdue()+focusCard();if(!L.length)h+='<div class="card mut">Nothing planned for today. Tap “+ New task” to add your first Elite task.</div>';
+ if(!L.length)h+='<div class="card mut">Nothing planned for today. Tap “+ New task” to add your first Elite task.</div>';
  [2,1,0].forEach(function(c){var g=L.filter(function(t){return t.cat==c});if(!g.length)return;
   h+='<div class="card"><div class="row"><b><span class="dot" style="background:'+CATS[c].c+'"></span> '+CATS[c].n+'</b><span class="mut">'+g.length+'</span></div>'+g.map(function(t){return trow(t,d)}).join('')+'</div>'});
  return h}
@@ -162,11 +161,11 @@ function tips(st){var T=[],c=st.cnt,tot=st.tot;
  T.push('Use repeats for habits (daily/alternate days) and leave one-off tasks as “Once” to keep the list clean.');
  T.push('Do a 5-minute review each evening: tick what’s done and plan tomorrow’s Elite task.');
  return T}
-function ins(){var st=stats();return '<h1>Insights</h1><div class="mut">'+st.tot+' tasks completed in total</div>'+lvlCard()+
+function ins(){var st=stats();return '<h1>Insights</h1><div class="mut">'+st.tot+' tasks completed in total</div>'+
  '<div class="card"><b>Where your time goes</b><div style="margin-top:8px">'+pie(st.cnt,st.tot)+'</div></div>'+
  '<div class="card"><b>When you’re most productive</b><div class="mut">Completions by hour of day</div>'+hbars(st.hrs)+'</div>'+
  '<div class="card"><b>Progress, last 14 days</b><div class="mut">% of planned tasks completed</div>'+line(st.days)+'</div>'+
- streakCard()+'<div class="card"><b>Suggestions</b>'+tips(st).map(function(t){return '<div class="sug">'+t+'</div>'}).join('')+'</div>'}
+ '<div class="card"><b>Suggestions</b>'+tips(st).map(function(t){return '<div class="sug">'+t+'</div>'}).join('')+'</div>'}
 var Q=[["The impediment to action advances action. What stands in the way becomes the way.","Marcus Aurelius"],["Waste no more time arguing about what a good man should be. Be one.","Marcus Aurelius"],["If it is not right, do not do it. If it is not true, do not say it.","Marcus Aurelius"],["You have a right to your actions, but never to your actions’ fruits.","Krishna, Bhagavad Gita"],["Set thy heart upon thy work, but never on its reward.","Krishna, Bhagavad Gita"],["The mind is restless, but it can be trained through practice and detachment.","Krishna, Bhagavad Gita"],["Victory belongs to the most persevering.","Napoleon Bonaparte (attributed)"],["Take time to deliberate, but when the time for action arrives, stop thinking and go in.","Napoleon Bonaparte (attributed)"],["Imagination rules the world.","Napoleon Bonaparte (attributed)"],["It is not that we have a short time to live, but that we waste much of it.","Seneca"],["We suffer more often in imagination than in reality.","Seneca"],["No man is free who is not master of himself.","Epictetus"],["A journey of a thousand miles begins with a single step.","Lao Tzu"],["He who has a why to live can bear almost any how.","Friedrich Nietzsche"]];
 var QI=dn(ymd(new Date()))%Q.length;
 function quote(){var q=Q[QI%Q.length];return '<div class="card q" style="margin-top:14px"><div>“'+q[0]+'”</div><div class="row" style="margin-top:8px"><span class="mut">— '+q[1]+'</span><button class="s" onclick="QI++;render()">Next quote</button></div></div>'}
@@ -187,60 +186,34 @@ function lists(){var Ls=S.lists,L=cur()||Ls[0];if(L)LID=L.id;
  h+=its.length?its.map(function(i){return '<div class="task'+(i.d?' done':'')+'"><button class="chk" style="border-color:var(--c2);'+(i.d?'background:var(--c2)':'')+'" onclick="tgItem('+i.id+')">'+(i.d?'✓':'')+'</button><div class="t"><b>'+esc(i.t)+'</b></div><button class="x" onclick="rmItem('+i.id+')">✕</button></div>'}).join(''):'<div class="mut" style="padding:12px 0">This list is empty.</div>';
  h+='</div><div class="row"><span class="mut">'+nd+' of '+L.items.length+' checked</span><span><button class="s btn g" onclick="clearDone()">Clear checked</button> <button class="s btn g" onclick="delList()">'+(delL?'Sure? Delete list':'Delete list')+'</button></span></div>';
  return h}
+
+var PUSH_URL='https://planner-push.icyybear330.workers.dev';
+var FBCFG={apiKey:'AIzaSyAU5lf2ZIlMwwF-PRF_dik6cCHVUsWfpko',authDomain:'planner-11d4e.firebaseapp.com',projectId:'planner-11d4e',storageBucket:'planner-11d4e.firebasestorage.app',messagingSenderId:'766572070459',appId:'1:766572070459:web:6228adf108d78b1850fe1e'};
+var VAPID='BLwbQdrGgsTSXvOF4oy2B4gGDDTCyS5MPr-wipB_zUbK3U5xjzQPSneTaBz-WJ1lLUdvaMtHeujvnD1JwlCaB94';
+var PUSHREADY=VAPID.indexOf('PASTE')<0&&PUSH_URL.indexOf('PASTE')<0;
+function pushSync(){try{var tk=localStorage.getItem('plannerTok');if(!tk||!PUSHREADY)return;
+ fetch(PUSH_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tk,tz:-new Date().getTimezoneOffset(),tasks:S.tasks.filter(function(t){return t.time}).map(function(t){return{id:t.id,title:t.title,cat:t.cat,date:t.date,time:t.time,rep:t.rep}}),done:(function(){var o={},d=ymd(new Date());Object.keys(S.done).forEach(function(k){if(k.split('|')[1]==d)o[k]=1});return o})()})}).catch(function(){})}catch(e){}}
+function pushOn(){
+ if(!PUSHREADY){alert('Notifications are not set up yet. The Firebase keys still need to be pasted into index.html.');return}
+ if(!('Notification' in window)||!('serviceWorker' in navigator)){alert('This browser cannot show notifications.');return}
+ Notification.requestPermission().then(function(r){
+  if(r!=='granted'){alert('Notifications are blocked. Allow them in Chrome settings for this site.');return}
+  var ld=function(u){return new Promise(function(ok,no){var s=document.createElement('script');s.src=u;s.onload=ok;s.onerror=no;document.head.appendChild(s)})};
+  ld('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js').then(function(){return ld('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js')}).then(function(){
+   firebase.initializeApp(FBCFG);
+   return navigator.serviceWorker.register('firebase-messaging-sw.js')}).then(function(reg){
+   return navigator.serviceWorker.ready.then(function(){return firebase.messaging().getToken({vapidKey:VAPID,serviceWorkerRegistration:reg})})}).then(function(tk){
+   if(!tk){alert('Could not get a notification token.');return}
+   localStorage.setItem('plannerTok',tk);pushSync();render();alert('Reminders are on. You will get a notification at each task time, even when the app is closed.')
+  }).catch(function(e){alert('Setup failed: '+(e&&e.message?e.message:e))})})}
+function pushOff(){localStorage.removeItem('plannerTok');render()}
+function pushTest(){var tk=localStorage.getItem('plannerTok');if(!tk)return;fetch(PUSH_URL+'/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tk})}).then(function(){alert('Test sent. It should arrive in a few seconds.')}).catch(function(){alert('Could not reach the server.')})}
+function pushCard(){var on=false;try{on=!!localStorage.getItem('plannerTok')&&Notification.permission==='granted'}catch(e){}
+ return '<div class="card" style="margin-top:14px"><div class="row"><b>🔔 Reminders</b><span class="mut">'+(on?'On':'Off')+'</span></div><div class="mut" style="margin:6px 0 10px">Get a notification at the time of each task, even when the app is closed.</div>'+
+ (on?'<button class="s btn g" onclick="pushTest()">Send test</button> <button class="s btn g" onclick="pushOff()">Turn off</button>':'<button class="btn" onclick="pushOn()">Turn on reminders</button>')+'</div>'}
 if('serviceWorker' in navigator)window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})});
-function streak(t){if(t.rep=='none')return 0;var d=new Date(),n=0;for(var i=0;i<400;i++){var k=ymd(d);if(dn(k)<dn(t.date))break;if(occ(t,k)){if(isDone(t,k))n++;else if(i>0)break}d.setDate(d.getDate()-1)}return n}
-function streakCard(){var L=S.tasks.filter(function(t){return t.rep!='none'}).map(function(t){return{t:t,s:streak(t)}}).sort(function(a,b){return b.s-a.s});
- return '<div class="card"><b>🔥 Streaks</b>'+(L.length?L.map(function(x){return '<div class="sug row"><span>'+esc(x.t.title)+'</span><b>'+x.s+' in a row</b></div>'}).join(''):'<div class="mut" style="padding-top:8px">Add a repeating task to start a streak.</div>')+'</div>'}
-function notify(t,b,tag){try{if(typeof Notification=='undefined'||Notification.permission!='granted')return;
- if(navigator.serviceWorker&&navigator.serviceWorker.getRegistration)navigator.serviceWorker.getRegistration().then(function(r){if(r)r.showNotification(t,{body:b,icon:'icon-192.png',badge:'icon-192.png',tag:tag});else new Notification(t,{body:b})});else new Notification(t,{body:b})}catch(e){}}
-function enableN(){if(S.set.notif){S.set.notif=false;save();render();return}if(typeof Notification=='undefined')return;
- Notification.requestPermission().then(function(p){S.set.notif=p=='granted';save();render();if(p=='granted')notify('Planner','Reminders are on 🔔','t')})}
-function chk(){if(!S.set.notif)return;var now=new Date(),d=ymd(now),m=now.getHours()*60+now.getMinutes(),ch=false;S.fired=S.fired||{};
- function due(h){var p=h.split(':'),x=+p[0]*60+ +p[1];return m>=x&&m<x+60}
- var k='daily|'+d;if(S.set.daily&&due(S.set.daily)&&!S.fired[k]){S.fired[k]=1;ch=true;var L=on(d).filter(function(t){return !isDone(t,d)});if(L.length)notify('Today’s plan',L.length+' tasks left. Start with: '+L[0].title,'daily')}
- on(d).forEach(function(t){var k2=t.id+'|'+d;if(t.time&&!isDone(t,d)&&due(t.time)&&!S.fired[k2]){S.fired[k2]=1;ch=true;notify((t.cat==2?'⭐ ':'⏰ ')+t.title,'Scheduled for '+t.time,String(t.id))}});if(ch)save()}
-setInterval(chk,30000);document.addEventListener('visibilitychange',chk);chk();
-function summary(){var st=stats(),d=ymd(new Date()),L=on(d),n=L.filter(function(t){return isDone(t,d)}).length,w=st.days.slice(-7).filter(function(x){return x.p!=null}),avg=w.length?Math.round(w.reduce(function(a,x){return a+x.p},0)/w.length):0,mx=Math.max.apply(null,st.hrs);
- var sk=S.tasks.filter(function(t){return t.rep!='none'}).map(function(t){return t.title+' '+streak(t)}).join(', ');
- return 'Today: '+n+' of '+L.length+' done'+(L.length?' ('+L.map(function(t){return CATS[t.cat].n+': '+t.title+(isDone(t,d)?' ✓':'')}).join('; ')+')':'')+'. Last 7 days average: '+avg+'%. Completed so far: Basic '+st.cnt[0]+', Medium '+st.cnt[1]+', Elite '+st.cnt[2]+'. Best hour: '+(mx?st.hrs.indexOf(mx)+':00':'not enough data')+'. Streaks: '+(sk||'none')+'.'}
-function localReply(q){q=q.toLowerCase();var d=ymd(new Date()),L=on(d).filter(function(t){return !isDone(t,d)});
- if(/motivat|quote|inspire/.test(q)){var z=Q[Math.floor(Math.random()*Q.length)];return '“'+z[0]+'” — '+z[1]}
- if(/^(hi|hello|hey)/.test(q))return 'Hey! '+summary().split('. ')[0]+'. Want your report, streaks, or your next task?';
- if(/streak/.test(q)){var s=S.tasks.filter(function(t){return t.rep!='none'}).map(function(t){return t.title+': '+streak(t)});return s.length?'Your streaks — '+s.join('; ')+'.':'No repeating tasks yet. Add one to start a streak.'}
- if(/plan|today|should|now|next/.test(q))return L.length?'Do this first: '+L[0].title+' ('+CATS[L[0].cat].n+'). '+(L.length-1)+' more after that.':'Nothing left for today. Nice work!';
- if(/hour|when|productive/.test(q))return summary().split('Best hour: ')[1].split('.')[0]+' is your best hour so far.';
- if(/report|summary|progress|how/.test(q))return summary();
- return 'I can give your report, streaks, best hour, what to do next, or a motivating quote. Try asking one of those!'}
-var busy=false;
-function send(){var i=el('ci'),q=i.value.trim();if(!q||busy)return;S.chat.push({r:'u',t:q});i.value='';
- if(!S.set.url){S.chat.push({r:'a',t:localReply(q)});S.chat=S.chat.slice(-40);save();render();return}
- busy=true;S.chat.push({r:'a',t:'…'});render();
- fetch(S.set.url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({context:summary(),messages:S.chat.slice(-11,-1).map(function(m){return{role:m.r=='u'?'user':'assistant',content:m.t}})})}).then(function(r){return r.json()}).then(function(j){S.chat[S.chat.length-1].t=j.reply||'Sorry, no reply.'}).catch(function(){S.chat[S.chat.length-1].t='Could not reach the AI. Check the URL or your connection.'}).then(function(){busy=false;S.chat=S.chat.slice(-40);save();render()})}
-function coach(){var s=S.set,on_=typeof Notification!='undefined'&&Notification.permission=='granted'&&s.notif;
- var h='<h1>Coach</h1><div class="mut">Reminders, and a chat that knows your tasks.</div>';
- h+='<div class="card" style="margin-top:14px"><div class="row"><b>🔔 Reminders</b><span class="mut">'+(typeof Notification=='undefined'?'Not supported':on_?'On':'Off')+'</span></div><label>Daily plan reminder</label><input type="time" value="'+s.daily+'" onchange="S.set.daily=this.value;save()"><div class="row" style="margin-top:12px;justify-content:flex-start"><button class="btn" onclick="enableN()">'+(s.notif?'Turn off':'Turn on')+'</button><button class="btn g" onclick="notify(\'Planner\',\'Test reminder works ✅\',\'t\')">Test</button></div><div class="mut" style="margin-top:8px">You’ll get a nudge at your daily time and at each task’s time while the app is open or recently used.</div></div>';
- h+='<div class="card"><b>🤖 Coach chat</b><div id="ch" style="max-height:340px;overflow:auto;margin:10px 0">'+(S.chat.length?S.chat.map(function(m){return '<div style="display:flex;justify-content:'+(m.r=='u'?'flex-end':'flex-start')+';margin:6px 0"><div style="max-width:85%;padding:9px 13px;border-radius:16px;white-space:pre-wrap;background:'+(m.r=='u'?'var(--c2);color:#12001f':'var(--line)')+'">'+esc(m.t)+'</div></div>'}).join(''):'<div class="mut">Try: “give me my report”, “my streaks”, “what should I do now?”</div>')+'</div><div class="row"><input id="ci" placeholder="Ask your coach…" maxlength="300" onkeydown="if(event.key===\'Enter\')send()"><button class="btn" onclick="send()">Send</button></div></div>';
- h+='<div class="card"><b>💾 Backup</b><div class="mut" style="margin:4px 0 0">Your data lives only on this phone. Export a backup before changing phones, then import it on the new one.</div><div class="row" style="margin-top:10px;justify-content:flex-start"><button class="btn" onclick="exportD()">Export</button><label class="btn g" style="margin:0;display:inline-block;cursor:pointer;font-size:15px">Import<input type="file" accept=".json,application/json" style="display:none" onchange="importD(this.files[0])"></label></div><div id="bm" class="mut" style="margin-top:8px"></div></div>';
- setTimeout(function(){var c=el('ch');if(c)c.scrollTop=c.scrollHeight},0);return h}
-function overdue(){var d=ymd(new Date()),L=S.tasks.filter(function(t){return t.rep=='none'&&t.date<d&&!isDone(t,t.date)});if(!L.length)return '';
- return '<div class="card"><div class="row"><b>⏳ Overdue</b><span class="mut">'+L.length+'</span></div>'+L.map(function(t){return '<div class="task"><span class="dot" style="background:'+CATS[t.cat].c+'"></span><div class="t"><b>'+esc(t.title)+'</b><span class="mut">was due '+t.date+'</span></div><button class="s btn g" style="padding:5px 10px" onclick="mv('+t.id+')">Move to today</button></div>'}).join('')+'</div>'}
-function mv(id){S.tasks.find(function(t){return t.id==id}).date=ymd(new Date());save();render()}
-function xp(){var x=0;Object.keys(S.done).forEach(function(k){var id=k.split('|')[0],t=S.tasks.find(function(a){return a.id==id});if(t)x+=t.cat+1});return x}
-var TT=['Starter','Planner','Achiever','Focused','Disciplined','Master','Legend'];
-function lv(){var x=xp(),l=Math.floor(Math.sqrt(x/10))+1,lo=10*(l-1)*(l-1),hi=10*l*l;return{x:x,l:l,t:TT[Math.min(l-1,TT.length-1)],p:Math.round((x-lo)/(hi-lo)*100),need:hi-x}}
-function lvlLine(){var v=lv();return '<div class="mut" style="margin-top:6px">🏆 Level '+v.l+' · '+v.t+' · '+v.x+' XP</div>'}
-function lvlCard(){var v=lv();return '<div class="card"><div class="row"><b>🏆 Level '+v.l+' · '+v.t+'</b><span class="mut">'+v.x+' XP</span></div><div class="bar"><i style="width:'+v.p+'%"></i></div><div class="mut">'+v.need+' XP to level '+(v.l+1)+'. Elite task = 3 XP, Medium = 2, Basic = 1.</div></div>'}
-var FT=null,FM=25;
-function fmt(ms){var s=Math.ceil(ms/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-function startF(m){FM=m;FT=Date.now()+m*60000;render()}
-function stopF(){FT=null;render()}
-function focusCard(){var m=S.focus[ymd(new Date())]||0;
- return '<div class="card"><div class="row"><b>🎯 Focus timer</b><span class="mut">'+m+' min today</span></div>'+(FT?'<div style="text-align:center;padding:10px 0"><div id="ft" style="font-size:48px;font-weight:900;letter-spacing:-2px">'+fmt(FT-Date.now())+'</div><button class="btn g" onclick="stopF()">Stop</button></div>':'<div class="row" style="justify-content:flex-start;margin-top:10px"><button class="btn" onclick="startF(25)">25 min</button><button class="btn g" onclick="startF(50)">50 min</button><button class="btn g" onclick="startF(10)">10 min</button></div><div class="mut" style="margin-top:8px">Pick your top Elite task and work on only that.</div>')+'</div>'}
-setInterval(function(){if(!FT)return;var r=FT-Date.now();if(r<=0){FT=null;var k=ymd(new Date());S.focus[k]=(S.focus[k]||0)+FM;save();notify('Focus session done 🎯','Great work! Take a short break.','ft');try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}render()}else{var e=el('ft');if(e)e.textContent=fmt(r)}},1000);
-function exportD(){var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));a.download='planner-backup-'+ymd(new Date())+'.json';document.body.appendChild(a);a.click();a.remove()}
-function importD(f){if(!f)return;var r=new FileReader();r.onload=function(){try{var o=JSON.parse(r.result);if(!Array.isArray(o.tasks))throw 0;S=o;S.done=S.done||{};S.set=S.set||{notif:false,daily:'08:00',url:''};S.chat=S.chat||[];S.focus=S.focus||{};S.lists=S.lists||[{id:1,name:'Grocery',items:[]}];save();render()}catch(e){var m=el('bm');if(m)m.textContent='That file is not a valid planner backup.'}};r.readAsText(f)}
-var V={today:today,lists:lists,coach:coach,tasks:tasks,cal:calv,ins:ins},NAV=[['today','Today'],['tasks','To-do'],['cal','Calendar'],['ins','Insights'],['lists','Lists'],['coach','Coach']];
-function render(){document.getElementById('app').innerHTML=V[view]();document.getElementById('add').style.display=(view=='lists'||view=='coach')?'none':'';
+var V={today:today,lists:lists,tasks:tasks,cal:calv,ins:ins},NAV=[['today','Today'],['tasks','To-do'],['cal','Calendar'],['ins','Insights'],['lists','Lists']];
+function render(){document.getElementById('app').innerHTML=V[view]();document.getElementById('add').style.display=view=='lists'?'none':'';
  document.getElementById('nav').innerHTML=NAV.map(function(n){return '<button class="'+(view==n[0]?'on':'')+'" onclick="view=\''+n[0]+'\';render();scrollTo(0,0)">'+n[1]+'</button>'}).join('')}
 var dlg=document.getElementById('dlg');
 document.getElementById('add').onclick=function(){document.getElementById('ti').value='';document.getElementById('da').value=(view=='cal'?sel:ymd(new Date()));document.getElementById('re').value='none';document.getElementById('tm').value='';dlg.showModal()};
