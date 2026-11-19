@@ -8,7 +8,8 @@ self.addEventListener('push', e => {
   try { d = e.data.json(); } catch (err) {}
   const n = d.notification || d.data || {};
   e.waitUntil(self.registration.showNotification(n.title || 'Planner', {
-    body: n.body || ''
+   body: n.body || '',
+vibrate: [200, 100, 200]
   }));
 });
 self.addEventListener('notificationclick', e => {
