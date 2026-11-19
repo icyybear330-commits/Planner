@@ -9,7 +9,9 @@ self.addEventListener('push', e => {
   const n = d.notification || d.data || {};
   e.waitUntil(self.registration.showNotification(n.title || 'Planner', {
    body: n.body || '',
-vibrate: [200, 100, 200]
+vibrate: [200, 100, 200],
+silent: false,
+requireInteraction: true
   }));
 });
 self.addEventListener('notificationclick', e => {
